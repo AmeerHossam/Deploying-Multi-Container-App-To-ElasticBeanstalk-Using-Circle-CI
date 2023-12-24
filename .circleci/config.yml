@@ -40,21 +40,19 @@ jobs:
             docker push sudo1amir/multi-container-worker
 
   deploy-to-elasticbeanstalk:
-    executor:
-      name: node/default
+    docker:
+      - image: cimg/python:3.10
     steps:
+      - checkout
+      - run: pip3 --version
       - run:
-          name: Installing deployment dependencies
-          command: |
-            sudo apt-get -y -qq update
-            sudo apt-get install python-pip python-dev build-essential
-            sudo pip install --upgrade setuptools
-            sudo pip install awsebcli --upgrade      
+          working_directory: /
+          name: installing ebcli
+          command: pip3 install awsebcli --upgrade --user
+      - run: eb --version
       - run:
-          name: Deploy to AWS Elastic Beanstalk
-          command: |
-            # Deploy using AWS Elastic Beanstalk CLI
-            eb deploy My-docker-app-env
+          name: deploying with awsebcli
+          command: eb deploy My-docker-app-env
 
 workflows:
   version: 2
