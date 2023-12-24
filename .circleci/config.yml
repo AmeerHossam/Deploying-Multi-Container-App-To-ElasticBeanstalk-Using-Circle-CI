@@ -51,11 +51,6 @@ jobs:
           command: pip3 install awsebcli --upgrade --user
       - run: eb --version
       - run:
-          name: Initialize Elastic Beanstalk CLI
-          command: |
-            eb init -p docker -r us-east-1 my-docker-app --non-interactive
-            eb use My-docker-app-env
-      - run:
           name: deploying with awsebcli
           command: eb deploy
 
