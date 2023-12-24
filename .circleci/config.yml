@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  aws-elastic-beanstalk: circleci/aws-elastic-beanstalk@2.0.1
+  eb: circleci/aws-elastic-beanstalk@1.0.0
 jobs:
   build-and-test:
     docker:
@@ -63,5 +63,5 @@ workflows:
           requires:
             - deploy-to-dockerhub
           filters:
-            branches: 
+            branches:
               only: main
