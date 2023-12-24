@@ -1,9 +1,10 @@
 version: 2.1
-
+orbs:
+  node: circleci/node@1.1
 jobs:
-  build_and_test:
+  build-and-test:
     docker:
-      - image: cimg/base:2023.04  # Use a CircleCI convenience image with Docker pre-installed
+      - image: circleci/node:latest  # Use an appropriate base image
 
     steps:
       - checkout
