@@ -49,6 +49,7 @@ jobs:
           name: Deploy to AWS Elastic Beanstalk
           command: |
             # Deploy using AWS Elastic Beanstalk CLI
+            eb init
             eb deploy My-docker-app-env
 
 workflows:
