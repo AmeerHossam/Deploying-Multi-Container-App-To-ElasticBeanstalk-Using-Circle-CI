@@ -20,13 +20,9 @@ jobs:
 
   build-and-deploy:
     docker:
-      - image: cimg/node:14.17  # Choose an image appropriate for your project
+      - image: circleci/buildpack-deps:stretch
     steps:
       - checkout
-
-      - setup_remote_docker:
-          docker_layer_caching: true
-
       - run:
           name: Build Docker Images
           command: |
@@ -48,7 +44,7 @@ jobs:
           name: Deploy to AWS Elastic Beanstalk
           command: |
             # Install AWS CLI
-            sudo apt-get update && sudo apt-get install awscli
+            sudo apt-get update && sudo apt-get install -y awscli
             # Configure AWS Access
             aws configure set aws_access_key_id $AWS_ACCESS_KEY
             aws configure set aws_secret_access_key $AWS_SECRET_KEY
