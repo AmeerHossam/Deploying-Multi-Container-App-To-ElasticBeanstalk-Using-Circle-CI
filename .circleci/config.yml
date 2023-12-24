@@ -1,79 +1,63 @@
 version: 2.1
-orbs:
-  node: circleci/node@1.1
+
 jobs:
-  build-and-test:
+  build_and_test:
     docker:
-      - image: circleci/node:latest  # Use an appropriate base image
+      - image: cimg/base:2023.04  # Use a CircleCI convenience image with Docker pre-installed
+
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 20.10.6
+      
+      - setup_remote_docker:  # Set up Docker for remote execution
+
       - run:
-          name: Build Docker Test Image
+          name: Build React test image
           command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
+
       - run:
-          name: Run Tests
+          name: Run tests in React container
           command: docker run -e CI=true sudo1amir/react-test npm test
 
-  deploy-to-dockerhub:
-    docker:
-      - image: circleci/node:latest
-    steps:
-      - checkout
-      - setup_remote_docker:
-          version: 20.10.6
       - run:
-          name: Build Docker Images
+          name: Build and push multi-container images
           command: |
             docker build -t sudo1amir/multi-container-react ./client
             docker build -t sudo1amir/multi-container-nginx ./nginx
             docker build -t sudo1amir/multi-container-server ./server
             docker build -t sudo1amir/multi-container-worker ./worker
-      - run:
-          name: Push Images to Docker Hub
-          command: |
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
             docker push sudo1amir/multi-container-react
-            docker push sudo1amir/multi-container-nginx
+            docker push sudo1amir/multi-container-nginx          
             docker push sudo1amir/multi-container-server
             docker push sudo1amir/multi-container-worker
 
-  deploy-to-elasticbeanstalk:
-    docker:
-      - image: cimg/base:2023.04  # Python image is used for the AWS CLI and EB CLI
-    steps:
-      - checkout
+      - deploy:
+          name: Deploy to Elastic Beanstalk
+          command: |
+            # Install AWS CLI if needed
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
 
-    command: |
-      # Install AWS CLI if needed
-      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      unzip awscliv2.zip
-      sudo ./aws/install
-      # Configure AWS credentials
-      aws configure set aws_access_key_id $AWS_ACCESS_KEY
-      aws configure set aws_secret_access_key $AWS_SECRET_KEY
-      aws configure set default.region us-east-1
-      # Deploy to Elastic Beanstalk (using AWS CLI commands)
-      aws elasticbeanstalk create-application-version \
-        --application-name my-docker-app \
-        --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S) \
-        --source-bundle S3Bucket=elasticbeanstalk-us-east-1-428846500808,S3Key=docker
-      aws elasticbeanstalk update-environment \
-        --environment-name My-docker-app-env \
-        --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S)
+            # Configure AWS credentials
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
+            aws configure set default.region us-east-1
+
+            # Deploy to Elastic Beanstalk (using AWS CLI commands)
+            aws elasticbeanstalk create-application-version \
+              --application-name my-docker-app \
+              --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S) \
+              --source-bundle S3Bucket=elasticbeanstalk-us-east-1-428846500808,S3Key=docker
+            aws elasticbeanstalk update-environment \
+              --environment-name My-docker-app-env \
+              --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S)
 
 workflows:
   version: 2
-  build-deploy:
+  build_and_deploy:
     jobs:
-      - build-and-test
-      - deploy-to-dockerhub:
-          requires:
-            - build-and-test
-      - deploy-to-elasticbeanstalk:
-          requires:
-            - deploy-to-dockerhub
+      - build_and_test:
           filters:
             branches:
               only: main
