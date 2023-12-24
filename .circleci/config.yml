@@ -63,5 +63,5 @@ workflows:
           requires:
             - deploy-to-dockerhub
           filters:
-            branches:
+            branches: 
               only: main
