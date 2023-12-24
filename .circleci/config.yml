@@ -2,8 +2,7 @@ version: 2.1
 
 jobs:
   build-and-test:
-    docker:
-      - image: circleci/buildpack-deps:stretch
+    machine: true  # Use machine instead of Docker
     steps:
       - checkout
 
