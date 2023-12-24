@@ -41,18 +41,32 @@ jobs:
 
   deploy-to-elasticbeanstalk:
     docker:
-      - image: gradientco/node-elastic-beanstalk:7.10.0
+      - image: cimg/python:3.7  # Python image is used for the AWS CLI and EB CLI
     steps:
       - checkout
-      - run:
-          name: Setup AWS credentials
-          command: |
-            mkdir ~/.aws && printf "[profile eb-cli]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY" > ~/.aws/config
-      - deploy:
-          name: Deploy to Elastic Beanstalk
-          command: |
-            eb deploy My-docker-app-env
 
+      - run:
+          name: Install AWS CLI
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y awscli
+
+      - run:
+          name: Install Elastic Beanstalk CLI
+          command: |
+            pip install awsebcli --upgrade --user
+
+      - run:
+          name: Configure AWS Credentials
+          command: |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
+            aws configure set default.region us-east-1
+
+      - run:
+          name: Deploy to AWS Elastic Beanstalk
+          command: |
+            eb deploy My-docker-app-env --region us-east-1 --staged
 workflows:
   version: 2
   build-deploy:
