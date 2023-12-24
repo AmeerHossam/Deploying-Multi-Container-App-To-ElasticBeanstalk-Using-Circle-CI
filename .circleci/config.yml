@@ -5,47 +5,69 @@ jobs:
   build-and-test:
     docker:
       - image: circleci/node:latest  # Use an appropriate base image
-
     steps:
       - checkout
-      
-      - setup_remote_docker:  # Set up Docker for remote execution
-
+      - setup_remote_docker:
+          version: 20.10.6
       - run:
-          name: Build React test image
+          name: Build Docker Test Image
           command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
-
       - run:
-          name: Run tests in React container
+          name: Run Tests
           command: docker run -e CI=true sudo1amir/react-test npm test
 
+  deploy-to-dockerhub:
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.6
       - run:
-          name: Build and push multi-container images
+          name: Build Docker Images
           command: |
             docker build -t sudo1amir/multi-container-react ./client
             docker build -t sudo1amir/multi-container-nginx ./nginx
             docker build -t sudo1amir/multi-container-server ./server
             docker build -t sudo1amir/multi-container-worker ./worker
+      - run:
+          name: Push Images to Docker Hub
+          command: |
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
             docker push sudo1amir/multi-container-react
-            docker push sudo1amir/multi-container-nginx          
+            docker push sudo1amir/multi-container-nginx
             docker push sudo1amir/multi-container-server
             docker push sudo1amir/multi-container-worker
 
-      - deploy:
-          name: Deploy to Elastic Beanstalk
+  deploy-to-elasticbeanstalk:
+    docker:
+      - image: cimg/python:3.7  # Python image is used for the AWS CLI and EB CLI
+    steps:
+      - checkout
+
+      - run:
+          name: Install AWS CLI
           command: |
-            # Install AWS CLI if needed
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
 
-            # Configure AWS credentials
+      - run:
+          name: Install Elastic Beanstalk CLI
+          command: |
+            pip install awsebcli --upgrade --user
+
+      - run:
+          name: Configure AWS Credentials
+          command: |
             aws configure set aws_access_key_id $AWS_ACCESS_KEY
             aws configure set aws_secret_access_key $AWS_SECRET_KEY
             aws configure set default.region us-east-1
 
-            # Deploy to Elastic Beanstalk (using AWS CLI commands)
+      - run:
+          name: Deploy to AWS Elastic Beanstalk
+          command: |
+          
             aws elasticbeanstalk create-application-version \
               --application-name my-docker-app \
               --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S) \
@@ -53,12 +75,17 @@ jobs:
             aws elasticbeanstalk update-environment \
               --environment-name My-docker-app-env \
               --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S)
-
 workflows:
   version: 2
-  build_and_deploy:
+  build-deploy:
     jobs:
-      - build_and_test:
+      - build-and-test
+      - deploy-to-dockerhub:
+          requires:
+            - build-and-test
+      - deploy-to-elasticbeanstalk:
+          requires:
+            - deploy-to-dockerhub
           filters:
             branches:
               only: main
