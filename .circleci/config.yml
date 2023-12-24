@@ -7,7 +7,7 @@ jobs:
     steps:
       - checkout
 
-      # Build Docker Image for Tests
+      # Build Docker Test Image
       - run:
           name: Build Docker Test Image
           command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
@@ -16,6 +16,12 @@ jobs:
       - run:
           name: Run Tests
           command: docker run -e CI=true sudo1amir/react-test npm test
+
+  build-and-deploy:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
 
       # Build Docker Images
       - run:
@@ -26,7 +32,7 @@ jobs:
             docker build -t sudo1amir/multi-container-server ./server
             docker build -t sudo1amir/multi-container-worker ./worker
 
-      # Push Images to Docker Hub
+      # Push images to Docker Hub
       - run:
           name: Push Images to Docker Hub
           command: |
@@ -36,25 +42,26 @@ jobs:
             docker push sudo1amir/multi-container-server
             docker push sudo1amir/multi-container-worker
 
-  deploy:
-    docker:
-      - image: circleci/buildpack-deps:stretch
-    steps:
-      - checkout
+      # Deploy to AWS Elastic Beanstalk
       - run:
           name: Deploy to AWS Elastic Beanstalk
           command: |
             # Install AWS CLI
             sudo apt-get update && sudo apt-get install awscli
-            # Deploy using Elastic Beanstalk CLI
-            eb deploy My-docker-app-env --region us-east-1
+            # Configure AWS Access
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
+            aws configure set default.region us-east-1
+            # Deploy using AWS Elastic Beanstalk CLI
+            # Note: Ensure your project is configured for Elastic Beanstalk deployment
+            eb deploy My-docker-app-env
 
 workflows:
   version: 2
-  build-deploy:
+  build-and-deploy:
     jobs:
       - build-and-test
-      - deploy:
+      - build-and-deploy:
           requires:
             - build-and-test
           filters:
