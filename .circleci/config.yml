@@ -41,18 +41,21 @@ jobs:
 
   deploy-to-elasticbeanstalk:
     docker:
-      - image: cimg/python:3.10
+      - image: gradientco/node-elastic-beanstalk:7.10.0
     steps:
       - checkout
-      - run: pip3 --version
+
       - run:
-          working_directory: /
-          name: installing ebcli
-          command: pip3 install awsebcli --upgrade --user
-      - run: eb --version
+          name: Run tests
+          command: yarn test
       - run:
-          name: deploying with awsebcli
-          command: eb deploy
+          name: Setup AWS credentials
+          command: |
+            mkdir ~/.aws && printf "[profile eb-cli]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY" > ~/.aws/config
+      - deploy:
+          name: Deploy to Elastic Beanstalk
+          command: |
+            eb deploy My-docker-app-env
 
 workflows:
   version: 2
