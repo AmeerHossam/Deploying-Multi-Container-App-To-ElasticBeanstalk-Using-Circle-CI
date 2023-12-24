@@ -1,5 +1,6 @@
 version: 2.1
-
+orbs:
+  eb: circleci/aws-elastic-beanstalk@1.0.0
 jobs:
   build-and-test:
     docker:
@@ -40,14 +41,10 @@ jobs:
 
   deploy-to-elasticbeanstalk:
     docker:
-      - image: cimg/python:3.7  # Using a Python image for AWS CLI and EB CLI
+      - image: cimg/base:stable # Using a Python image for AWS CLI and EB CLI
     steps:
       - checkout
-      - run:
-          name: Install AWS CLI and Elastic Beanstalk CLI
-          command: |
-            sudo apt-get update && sudo apt-get install -y awscli
-            sudo pip install awsebcli
+      - eb/setup
       - run:
           name: Deploy to AWS Elastic Beanstalk
           command: |
