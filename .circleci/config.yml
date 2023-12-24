@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  eb: circleci/aws-elastic-beanstalk@1.0.0
+  aws-elastic-beanstalk: circleci/aws-elastic-beanstalk@2.0.1
 jobs:
   build-and-test:
     docker:
@@ -49,7 +49,6 @@ jobs:
           name: Deploy to AWS Elastic Beanstalk
           command: |
             # Deploy using AWS Elastic Beanstalk CLI
-            eb init
             eb deploy My-docker-app-env
 
 workflows:
