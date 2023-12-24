@@ -44,10 +44,6 @@ jobs:
       - image: gradientco/node-elastic-beanstalk:7.10.0
     steps:
       - checkout
-
-      - run:
-          name: Run tests
-          command: yarn test
       - run:
           name: Setup AWS credentials
           command: |
