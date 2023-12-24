@@ -40,13 +40,14 @@ jobs:
 
   deploy-to-elasticbeanstalk:
     docker:
-      - image: circleci/node:latest
+      - image: cimg/python:3.7  # Using a Python image for AWS CLI and EB CLI
     steps:
       - checkout
       - run:
-          name: Install AWS CLI
+          name: Install AWS CLI and Elastic Beanstalk CLI
           command: |
-            sudo apt-get update && sudo apt-get install awscli
+            sudo apt-get update && sudo apt-get install -y awscli
+            sudo pip install awsebcli
       - run:
           name: Deploy to AWS Elastic Beanstalk
           command: |
