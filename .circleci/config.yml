@@ -46,9 +46,28 @@ jobs:
             docker push sudo1amir/multi-container-nginx          
             docker push sudo1amir/multi-container-server
             docker push sudo1amir/multi-container-worker
+  deploy:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - run:
+          name: Deploy to AWS Elastic Beanstalk
+          command: |
+            # Install AWS CLI
+            sudo apt-get update && sudo apt-get install awscli
+            # Deploy using Elastic Beanstalk CLI
+            eb deploy My-docker-app-env --region us-east-1
+      
 
 workflows:
   version: 2
   build-deploy:
     jobs:
       - build-and-test
+      - deploy:
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only: main
