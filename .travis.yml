@@ -1,0 +1,38 @@
+language: generic 
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
+
+script:
+  - docker run -e CI=true sudo1amir/react-test npm test
+
+after_success:
+  - docker build -t sudo1amir/multi-container-react ./client
+  - docker build -t sudo1amir/multi-container-nginx ./nginx
+  - docker build -t sudo1amir/multi-container-server ./server
+  - docker build -t sudo1amir/multi-container-worker ./worker
+
+  #Push images to dockerhub
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Push image to dockerhub
+  - docker push sudo1amir/multi-container-react
+  - docker push sudo1amir/multi-container-nginx          
+  - docker push sudo1amir/multi-container-server
+  - docker push sudo1amir/multi-container-worker
+
+
+deploy:
+  provider: elasticbeanstalk
+  region: 'us-east-1'
+  app: 'my-docker-app'
+  env: 'My-docker-app-env'
+  bucket_name: 'elasticbeanstalk-us-east-1-428846500808'
+  bucket_path: 'docker'
+  on:
+    branch: main
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
