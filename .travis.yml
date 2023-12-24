@@ -1,65 +1,38 @@
-version: 2.1
+language: generic 
+sudo: required
 
-jobs:
-  build-and-test:
-    docker:
-      - image: cimg/node:14.17  # Choose an image appropriate for your project
-    steps:
-      - checkout
+services:
+  - docker
 
-      - setup_remote_docker:
-          docker_layer_caching: true
+before_install:
+  - docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
 
-      - run:
-          name: Build Docker Test Image
-          command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
+script:
+  - docker run -e CI=true sudo1amir/react-test npm test
 
-      - run:
-          name: Run Tests
-          command: docker run -e CI=true sudo1amir/react-test npm test
+after_success:
+  - docker build -t sudo1amir/multi-container-react ./client
+  - docker build -t sudo1amir/multi-container-nginx ./nginx
+  - docker build -t sudo1amir/multi-container-server ./server
+  - docker build -t sudo1amir/multi-container-worker ./worker
 
-  build-and-deploy:
-    docker:
-      - image: circleci/buildpack-deps:stretch
-    steps:
-      - checkout
-      - run:
-          name: Build Docker Images
-          command: |
-            docker build -t sudo1amir/multi-container-react ./client
-            docker build -t sudo1amir/multi-container-nginx ./nginx
-            docker build -t sudo1amir/multi-container-server ./server
-            docker build -t sudo1amir/multi-container-worker ./worker
+  #Push images to dockerhub
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Push image to dockerhub
+  - docker push sudo1amir/multi-container-react
+  - docker push sudo1amir/multi-container-nginx          
+  - docker push sudo1amir/multi-container-server
+  - docker push sudo1amir/multi-container-worker
 
-      - run:
-          name: Push Images to Docker Hub
-          command: |
-            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
-            docker push sudo1amir/multi-container-react
-            docker push sudo1amir/multi-container-nginx
-            docker push sudo1amir/multi-container-server
-            docker push sudo1amir/multi-container-worker
 
-      - run:
-          name: Deploy to AWS Elastic Beanstalk
-          command: |
-            # Install AWS CLI
-            sudo apt-get update && sudo apt-get install -y awscli
-            # Configure AWS Access
-            aws configure set aws_access_key_id $AWS_ACCESS_KEY
-            aws configure set aws_secret_access_key $AWS_SECRET_KEY
-            aws configure set default.region us-east-1
-            # Deploy using AWS Elastic Beanstalk CLI
-            eb deploy My-docker-app-env
-
-workflows:
-  version: 2
-  build-and-deploy:
-    jobs:
-      - build-and-test
-      - build-and-deploy:
-          requires:
-            - build-and-test
-          filters:
-            branches:
-              only: main
+deploy:
+  provider: elasticbeanstalk
+  region: 'us-east-1'
+  app: 'my-docker-app'
+  env: 'My-docker-app-env'
+  bucket_name: 'elasticbeanstalk-us-east-1-428846500808'
+  bucket_path: 'docker'
+  on:
+    branch: main
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
