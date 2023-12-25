@@ -45,7 +45,7 @@ jobs:
       - image: cimg/base:2023.05
     steps:
       - checkout
-      - aws-elasticbeanstalk/deploy-application:
+      - circleci/aws-elastic-beanstalk:
           app_name: my-docker-app
           env_name: My-docker-app-env
           region: us-east-1
