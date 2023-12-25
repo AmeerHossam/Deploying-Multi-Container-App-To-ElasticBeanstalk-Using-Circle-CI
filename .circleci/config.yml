@@ -1,91 +1,72 @@
 version: 2.1
-orbs:
-  node: circleci/node@1.1
+
 jobs:
   build-and-test:
     docker:
-      - image: circleci/node:latest  # Use an appropriate base image
+      - image: cimg/base:2023.05
     steps:
       - checkout
+
+      # Install Dependencies (if needed)
+      # - run: sudo apt-get update && sudo apt-get install ...
+
       - setup_remote_docker:
-          version: 20.10.6
-      - run:
-          name: Build Docker Test Image
-          command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
-      - run:
-          name: Run Tests
-          command: docker run -e CI=true sudo1amir/react-test npm test
+          docker_layer_caching: true
 
-  deploy-to-dockerhub:
+      - build_and_test:
+          context: client
+          dockerfile: Dockerfile.dev
+      - run: docker run -e CI=true sudo1amir/react-test npm test
+
+  build-and-push-images:
     docker:
-      - image: circleci/node:latest
+      - image: cimg/base:2023.05
     steps:
       - checkout
+
       - setup_remote_docker:
-          version: 20.10.6
-      - run:
-          name: Build Docker Images
-          command: |
-            docker build -t sudo1amir/multi-container-react ./client
-            docker build -t sudo1amir/multi-container-nginx ./nginx
-            docker build -t sudo1amir/multi-container-server ./server
-            docker build -t sudo1amir/multi-container-worker ./worker
-      - run:
-          name: Push Images to Docker Hub
-          command: |
-            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
-            docker push sudo1amir/multi-container-react
-            docker push sudo1amir/multi-container-nginx
-            docker push sudo1amir/multi-container-server
-            docker push sudo1amir/multi-container-worker
+          docker_layer_caching: true
 
-  deploy-to-elasticbeanstalk:
+      - build_and_push_images:
+          filters:
+            branches:
+              only: main
+      - run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+      - run: docker push sudo1amir/multi-container-react
+      - run: docker push sudo1amir/multi-container-nginx
+      - run: docker push sudo1amir/multi-container-server
+      - run: docker push sudo1amir/multi-container-worker
+
+  deploy:
     docker:
-      - image: cimg/python:3.7  # Python image is used for the AWS CLI and EB CLI
+      - image: cimg/base:2023.05
     steps:
       - checkout
+      - aws-elasticbeanstalk/deploy-application:
+          app_name: my-docker-app
+          env_name: My-docker-app-env
+          region: us-east-1
+          bucket_name: elasticbeanstalk-us-east-1-428846500808
+          bucket_path: docker
+          access_key_id: $AWS_ACCESS_KEY
+          secret_access_key: $AWS_SECRET_KEY
+          deployment_policy: Rolling
+          wait_for_completion: true
 
-      - run:
-          name: Install AWS CLI
-          command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-
-      - run:
-          name: Install Elastic Beanstalk CLI
-          command: |
-            pip install awsebcli --upgrade --user
-
-      - run:
-          name: Configure AWS Credentials
-          command: |
-            aws configure set aws_access_key_id $AWS_ACCESS_KEY
-            aws configure set aws_secret_access_key $AWS_SECRET_KEY
-            aws configure set default.region us-east-1
-
-      - run:
-          name: Deploy to AWS Elastic Beanstalk
-          command: |
-          
-            aws elasticbeanstalk create-application-version \
-              --application-name my-docker-app \
-              --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S) \
-              --source-bundle S3Bucket=elasticbeanstalk-us-east-1-428846500808,S3Key=docker
-            aws elasticbeanstalk update-environment \
-              --environment-name My-docker-app-env \
-              --version-label my-docker-app-version-$(date +%Y%m%d-%H%M%S)
 workflows:
   version: 2
-  build-deploy:
+  build-test-and-deploy:
     jobs:
       - build-and-test
-      - deploy-to-dockerhub:
+      - build-and-push-images:
           requires:
             - build-and-test
-      - deploy-to-elasticbeanstalk:
+          filters:
+            branches:
+              only: main
+      - deploy:
           requires:
-            - deploy-to-dockerhub
+            - build-and-push-images
           filters:
             branches:
               only: main
