@@ -1,43 +1,45 @@
 version: 2.1
-
+orbs:
+  node: circleci/node@1.1
 jobs:
   build-and-test:
     docker:
-      - image: cimg/base:2023.05
+      - image: circleci/node:latest  # Use an appropriate base image
     steps:
       - checkout
-
-      # Install Dependencies (if needed)
-      # - run: sudo apt-get update && sudo apt-get install ...
-
       - setup_remote_docker:
-          docker_layer_caching: true
+          version: 20.10.6
+      - run:
+          name: Build Docker Test Image
+          command: docker build -t sudo1amir/react-test -f ./client/Dockerfile.dev ./client/
+      - run:
+          name: Run Tests
+          command: docker run -e CI=true sudo1amir/react-test npm test
 
-      - build_and_test:
-          context: client
-          dockerfile: Dockerfile.dev
-      - run: docker run -e CI=true sudo1amir/react-test npm test
-
-  build-and-push-images:
+  deploy-to-dockerhub:
     docker:
-      - image: cimg/base:2023.05
+      - image: circleci/node:latest
     steps:
       - checkout
-
       - setup_remote_docker:
-          docker_layer_caching: true
+          version: 20.10.6
+      - run:
+          name: Build Docker Images
+          command: |
+            docker build -t sudo1amir/multi-container-react ./client
+            docker build -t sudo1amir/multi-container-nginx ./nginx
+            docker build -t sudo1amir/multi-container-server ./server
+            docker build -t sudo1amir/multi-container-worker ./worker
+      - run:
+          name: Push Images to Docker Hub
+          command: |
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+            docker push sudo1amir/multi-container-react
+            docker push sudo1amir/multi-container-nginx
+            docker push sudo1amir/multi-container-server
+            docker push sudo1amir/multi-container-worker
 
-      - build_and_push_images:
-          filters:
-            branches:
-              only: main
-      - run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
-      - run: docker push sudo1amir/multi-container-react
-      - run: docker push sudo1amir/multi-container-nginx
-      - run: docker push sudo1amir/multi-container-server
-      - run: docker push sudo1amir/multi-container-worker
-
-  deploy:
+  deploy-to-elasticbeanstalk:
     docker:
       - image: cimg/base:2023.05
     steps:
@@ -52,21 +54,18 @@ jobs:
           secret_access_key: $AWS_SECRET_KEY
           deployment_policy: Rolling
           wait_for_completion: true
-
+          
 workflows:
   version: 2
-  build-test-and-deploy:
+  build-deploy:
     jobs:
       - build-and-test
-      - build-and-push-images:
+      - deploy-to-dockerhub:
           requires:
             - build-and-test
-          filters:
-            branches:
-              only: main
-      - deploy:
+      - deploy-to-elasticbeanstalk:
           requires:
-            - build-and-push-images
+            - deploy-to-dockerhub
           filters:
             branches:
               only: main
