@@ -1,4 +1,6 @@
 version: 2.1
+orbs:
+  aws-elasticbeanstalk: circleci/aws-elasticbeanstalk@2.0.1
 jobs:
   build-and-test:
     docker:
