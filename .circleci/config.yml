@@ -1,7 +1,6 @@
 version: 2.1
 orbs:
-  eb: circleci/aws-elastic-beanstalk@1.0.0
-  node: circleci/node@4.1.0
+  aws-elastic-beanstalk: circleci/aws-elastic-beanstalk@2.0.1
 jobs:
   build-and-test:
     docker:
@@ -45,7 +44,7 @@ jobs:
       - image: cimg/base:2023.05
     steps:
       - checkout
-      - eb/deploy:
+      - aws-elastic-beanstalk/deploy:
           app_name: my-docker-app
           env_name: My-docker-app-env
           region: us-east-1
