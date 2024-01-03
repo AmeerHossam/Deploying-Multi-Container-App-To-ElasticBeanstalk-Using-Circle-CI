@@ -5,7 +5,7 @@ This repository contains the code and configuration files for deploying a multi-
 ## Overview
 
 AWS Elastic Beanstalk is a Platform-as-a-Service (PaaS) offering by Amazon Web Services (AWS) that simplifies the deployment and management of web applications. In this repository, we'll walk you through the process of deploying a multi-container application to Elastic Beanstalk using CircleCI for automated deployments.
-
+![alt text](./ebs.png)
 ## Repository Structure
 
 The repository is organized as follows:
